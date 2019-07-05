@@ -102,3 +102,12 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+.idea/
+dist.rar
+log/
+p_test/
+resource/button/1.png
+resource/button/2.png
+resource/screen/
+"resource/\351\205\215\347\275\256\350\257\264\346\230\216.txt"
