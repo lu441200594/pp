@@ -82,14 +82,3 @@ if __name__ == '__main__':
     diff = time.time() - now
     print(diff)
     test(img_to_str('resource/screen/2.png'))
-
-    now = time.time()
-    print(img_to_str('resource/screen/3.png'))
-    diff = time.time() - now
-    print(diff)
-    test(img_to_str('resource/screen/3.png'))
-
-    now = time.time()
-    print(img_to_str(r'C:\Workspaces\python\pp\resource\screen\price_20190614105758.png'))
-    diff = time.time() - now
-    print(diff)
