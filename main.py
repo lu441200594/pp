@@ -1,17 +1,15 @@
 import time
 import os
-import threading
+from threading import Thread, Lock
 from selenium import webdriver
 from PIL import Image
 import logging
-import datetime
+from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 from selenium.common.exceptions import NoSuchWindowException
-
 import baidu_ocr
-import configparser
+from configparser import ConfigParser
 from selenium.webdriver.common.action_chains import ActionChains
 from pynput import keyboard
 import traceback
@@ -19,14 +17,15 @@ import re
 from io import BytesIO
 import sys
 import opencv_util
+import get_sys_time
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
-                    filename='log/log-' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d') + '.txt',
+                    filename='log/log-' + datetime.strftime(datetime.now(), '%Y-%m-%d') + '.txt',
                     filemode='a')
 
-cf = configparser.ConfigParser()
+cf = ConfigParser()
 cf.read('resource/default.conf', encoding='UTF-8')
 
 infoLoc = cf['infoLoc']
@@ -74,8 +73,7 @@ ifSavePrice = bidPrice.getboolean('ifSavePrice')
 
 curPrice = '0'
 
-lock = threading.Lock()
-thread_lock = threading.Lock()
+lock = Lock()
 
 infoDir = {'left': 0, 'top': 0, 'right': 0, 'bottom': 0}
 webDir = {'left': 0, 'top': 0, 'right': 0, 'bottom': 0}
@@ -102,6 +100,14 @@ def pp(if_test):
         # driver.set_window_size(800, 720)
         driver.get(url)
         time.sleep(1)
+
+        # 时间同步
+        try:
+            get_sys_time.setTime(get_sys_time.getTime(url))
+            logging.info('时间同步成功')
+        except Exception:
+            logging.error('时间同步失败')
+            traceback.print_exc()
 
         # 配置参数
 
@@ -168,7 +174,7 @@ def begin(driver):
                     continue
                 for i in range(len(base_str)):
                     s = base_str[i]['words']
-                    if '目前最低可成交价' in s:
+                    if '最低可成交价' in s and '出价时间' not in s:
                         curPrice = s.split(':')[1]
                         if curPrice.strip() == '':
                             logging.warning('价格识别分段')
@@ -193,38 +199,41 @@ def begin(driver):
 
             # 判定是否到达出价时间
             thread2 = None
-            thread3 = None
+            thread3_started = False
             if int(now2[6:]) == secondSec:
                 # 到出价时间，出价
-                thread2 = threading.Thread(target=bid_thread, args=(int(curPrice) + secondPrice, driver, '第二次'))
+                thread2 = Thread(target=bid_thread, args=(int(curPrice) + secondPrice, driver, '第二次'))
                 thread2.start()
                 threads.append(thread2)
-            elif thirdSec != 0 and int(now2[6:]) == thirdSec:
-                thread3 = threading.Thread(target=bid_thread, args=(int(curPrice) + thirdPrice, driver, '第三次'))
+            elif thirdSec != 0 and int(now2[6:]) >= thirdSec and (
+                    thread2 is None or not thread2.isAlive()) and not thread3_started:
+                thread3_started = True
+                thread3 = Thread(target=bid_thread, args=(int(curPrice) + thirdPrice, driver, '第三次'))
                 thread3.start()
                 threads.append(thread3)
 
-            s = time.time() - start_sec
-            while s < 0:
-                s += 1
-            if s < 1:
+            end_sec = time.time()
+            s = end_sec - start_sec
+            if 1 > s > 0:
                 time.sleep(1 - s)
+            elif s < 0:
+                logging.error('计时器异常：' + time.strftime("%H:%M:%S", time.localtime(end_sec)) + '，' +
+                              time.strftime("%H:%M:%S", time.localtime(start_sec)))
             else:
                 logging.info('判断超时：' + str(s))
 
         for thread in threads:
             thread.join()
     except NoSuchWindowException:
-        logging.info('exception end')
-    except Exception as e:
-        logging.error(e)
+        logging.info('NoSuchWindowException end')
+    except Exception:
+        logging.error('begin error: ', exc_info=True)
 
 
 def bid_thread(price, driver, name):
     logging.info('启动' + name + '出价线程')
-    with thread_lock:
-        bid(price, driver)
-        time.sleep(50)
+    bid(price, driver)
+    time.sleep(50)
 
 
 def bid(price, driver):
@@ -238,7 +247,7 @@ def bid(price, driver):
         now = time.time()
         element = driver.find_element_by_id('testsocket')
         if ifSavePrice:
-            actions.move_to_element_with_offset(element, priceX, priceY).click().send_keys(price)
+            actions.move_to_element_with_offset(element, priceX, priceY).double_click().send_keys(price)
         else:
             actions.move_to_element_with_offset(element, pricePlusX, pricePlusY).click().send_keys(price)
             actions.move_to_element_with_offset(element, pricePlusEnterX, pricePlusEnterY).click()
@@ -311,7 +320,7 @@ def test_loc_config():
     bidY = 250
     priceX = 680
     priceY = 250
-    pricePlusX = 685
+    pricePlusX = 650
     pricePlusY = 150
     pricePlusEnterX = 800
     pricePlusEnterY = 150

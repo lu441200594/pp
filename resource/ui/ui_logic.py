@@ -1,6 +1,6 @@
 import threading
 from resource.ui.window import Ui_MainWindow
-import start
+import main
 import logging
 import datetime
 
@@ -19,32 +19,33 @@ class UiLogic(Ui_MainWindow):
     def confirmButtonClick(self):
         try:
             logging.info(
-                'change before: second sec: ' + str(start.secondSec) + ', second price: ' + str(start.secondPrice) +
-                ', third sec: ' + str(start.thirdSec) + ', third price: ' + str(start.thirdPrice) +
-                ', if force bid: ' + str(start.ifForceBid) + ', force bid millis: ' + str(start.forceBidMillis))
-            start.secondSec = self.secondBidTime.time().second()
-            start.secondPrice = self.secondBidPrice.value()
+                'change before: second sec: ' + str(main.secondSec) + ', second price: ' + str(main.secondPrice) +
+                ', third sec: ' + str(main.thirdSec) + ', third price: ' + str(main.thirdPrice) +
+                ', if force bid: ' + str(main.ifForceBid) + ', force bid millis: ' + str(main.forceBidMillis))
+            main.secondSec = self.secondBidTime.time().second()
+            main.secondPrice = self.secondBidPrice.value()
             third_price = self.thirdBidPrice.value()
-            if third_price != 0:
-                start.thirdSec = self.thirdBidTime.time().second()
-                start.secondPrice = third_price
+            main.thirdSec = self.thirdBidTime.time().second()
+            main.thirdPrice = third_price
             force_bid_checked = self.forceBid
             if force_bid_checked.isChecked():
-                start.ifForceBid = True
-                start.forceBidMillis = float(self.forceBidTime.time().toString('ss.zzz'))
+                main.ifForceBid = True
+                main.forceBidMillis = float(self.forceBidTime.time().toString('ss.zzz'))
+            else:
+                main.ifForceBid = False
             logging.info(
-                'change after: second sec: ' + str(start.secondSec) + ', second price: ' + str(start.secondPrice) +
-                ', third sec: ' + str(start.thirdSec) + ', third price: ' + str(start.thirdPrice) +
-                ', if force bid: ' + str(start.ifForceBid) + ', force bid millis: ' + str(start.forceBidMillis))
+                'change after: second sec: ' + str(main.secondSec) + ', second price: ' + str(main.secondPrice) +
+                ', third sec: ' + str(main.thirdSec) + ', third price: ' + str(main.thirdPrice) +
+                ', if force bid: ' + str(main.ifForceBid) + ', force bid millis: ' + str(main.forceBidMillis))
         except Exception as e:
             logging.error('confirmButtonClick error: ', e)
 
     def formalPpClick(self):
         logging.info('begin formal pp')
-        thread = threading.Thread(target=start.pp, args=(False,))
+        thread = threading.Thread(target=main.pp, args=(False,))
         thread.start()
 
     def testPpClick(self):
         logging.info('begin test pp')
-        thread = threading.Thread(target=start.pp, args=(True,))
+        thread = threading.Thread(target=main.pp, args=(True,))
         thread.start()

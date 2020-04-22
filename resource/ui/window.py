@@ -5,7 +5,11 @@
 # Created by: PyQt5 UI code generator 5.12
 #
 # WARNING! All changes made in this file will be lost!
+import sys
+import os
 
+if hasattr(sys, 'frozen'):
+    os.environ['PATH'] = sys._MEIPASS + ";" + os.environ['PATH']
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
@@ -166,5 +170,3 @@ class Ui_MainWindow(object):
         self.label_6.setText(_translate("MainWindow", "  +"))
         self.productWeb.setText(_translate("MainWindow", "正式拍牌"))
         self.testWeb.setText(_translate("MainWindow", "测试拍牌"))
-
-
